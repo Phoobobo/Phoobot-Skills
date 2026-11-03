@@ -1,0 +1,4 @@
+interface:
+  display_name: "Herdr App Guide"
+  short_description: "Read the local guide before using Herdr app features"
+  default_prompt: "Use $herdr-app-guide to explain how to split a pane in the Herdr app."
