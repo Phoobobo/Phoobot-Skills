@@ -10,6 +10,7 @@ Reusable personal agent skills for local Mac maintenance and agent coordination.
 | [herdr-agent-comm](skills/herdr-agent-comm/SKILL.md) | Send scoped agent messages with clear sender identity, bounded waits, and asynchronous replies. |
 | [herdr-app-guide](skills/herdr-app-guide/SKILL.md) | Read the local Herdr app guide before explaining or using panes, tabs, layouts, and other features. |
 | [mo-clean](skills/mo-clean/SKILL.md) | Preview and run Mole clean with protected paths, explicit scope, and verified cleanup results. |
+| [bytebox-login](skills/bytebox-login/SKILL.md) | Open or reuse an authorized Bytebox SSH session through a user-provided Kerberos jump host, with Herdr Core support. |
 
 The coordination and maintenance skill instructions are written in Chinese; the Herdr app guide skill is written in English. They preserve user authorization and distinguish sending a message from completing a task.
 
@@ -26,17 +27,18 @@ npx skills add Phoobobo/Phoobot-Skills --skill hybrid-agent-coordination
 npx skills add Phoobobo/Phoobot-Skills --skill herdr-agent-comm
 npx skills add Phoobobo/Phoobot-Skills --skill herdr-app-guide
 npx skills add Phoobobo/Phoobot-Skills --skill mo-clean
+npx skills add Phoobobo/Phoobot-Skills --skill bytebox-login
 ```
 
 ## Requirements
 
 For Herdr coordination and communication, install [Herdr](https://github.com/herdrdev/herdr) and make its `herdr` skill available to your agent. Run Herdr communication from a Herdr-managed agent session (`HERDR_ENV=1`). Use the installed CLI help to verify supported commands. For `herdr-app-guide`, run the agent inside the Herdr desktop app and provide its generated `$HOME/.config/herdr-app/AGENTS.md` guide. Application-based coordination requires that application's supported session tools.
 
-This repository contains personal agent skills, not the third-party Herdr skill or company-specific integrations.
+This repository contains personal agent skills, not the third-party Herdr skill or private integration configuration. For `bytebox-login`, supply your approved jump host, Kerberos principal, and target IP when starting a new connection.
 
 ## Public backup
 
-This is a sanitized source snapshot: no credentials, private endpoints, local account paths, real session IDs, internal project files, or conversation archives are included. Example agent names and MR numbers are illustrative. The original local skills are not modified.
+This is a sanitized source snapshot: no credentials, private endpoints, local account paths, real session IDs, internal project files, or conversation archives are included. Example agent names and MR numbers are illustrative.
 
 ## Discovery
 

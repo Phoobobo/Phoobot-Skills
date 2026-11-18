@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bytebox Login"
+  short_description: "Log in to any Bytebox IP, using root by default"
+  default_prompt: "Use $bytebox-login to connect to the Bytebox IP I provide through my approved jump host, defaulting to root and pausing for human authentication when needed."
