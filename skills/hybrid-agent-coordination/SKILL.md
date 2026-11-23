@@ -1,19 +1,19 @@
 ---
 name: hybrid-agent-coordination
-description: 当用户明确要求用多个独立 agent 会话并行大任务、向其他 agent 派活、启动或跟进独立 agent 会话时使用。协调 App 或 Herdr 会话的创建、命名、通信、交接与清理。原生 subagent 的使用判断不属于本 skill。
+description: 仅在独立 Herdr CLI（herdr）托管的会话中，且用户明确要求在该环境启动、派活、交接或跟进独立 agent 会话时使用。只适用于 HERDR_ENV=1 且 HC_TERMINAL_ID 为空；Herdr Core（hc）、Herdr Desktop 会话工具、其他载体和原生 subagent 不命中。
 ---
 
-# Hybrid Agent Coordination
+# Hybrid Agent Coordination（Herdr CLI only）
 
-按用户明确提出的独立 agent 会话协作要求，选择执行会话、传递任务并汇总结果。以下规则适用于 App/Herdr 独立会话；原生 subagent 由其自身机制决定使用，不受本 skill 的会话、通信或生命周期规则约束。
+先检查 `test -z "${HC_TERMINAL_ID:-}" && test "${HERDR_ENV:-}" = 1 && command -v herdr >/dev/null`。任一条件不满足就停止本 skill，不用 `herdr` 探查聚焦会话，也不回退到其他工具。Herdr Core 由其自身的 `hc --skill` 指导；原生 subagent 由其自身机制指导。
 
-## 选择执行载体
+## 选择会话位置
 
-根据当前可用的会话创建、命名、发消息和等待工具选择载体。应用内跨任务会话与 Herdr 会话都可以参与协作；具体能力以当前工具文档为准。使用 Herdr 工具时读取 `herdr` skill。仅编写、验证本 skill 时不操作真实会话。
+读取 `herdr` skill 和当前 CLI 帮助。仅编写、验证本 skill 时不操作真实会话。
 
 - 独立任务（包括 handoff），或需要隔离写代码：使用 Herdr 创建独立的 worktree 式 workspace，执行者在对应 worktree 中工作。
 - 完成同一个目标任务、非 handoff 且无需隔离写代码：优先当前 tab；空间不足或达到四个 pane 时，在当前 workspace 新建 tab。
-- 用户明确指定其他载体或位置时遵从其要求。应用内会话使用当前应用支持的创建与跨任务通信工具。
+- 用户指定 Herdr 内的位置时按要求执行；若指定其他载体，不使用本 skill。
 - 同一份工作只交给一个执行者；并发写代码时明确文件所有权。新会话不等于文件系统隔离。
 
 ## 新建还是复用
@@ -48,11 +48,10 @@ Herdr 会话按上述任务关系选择位置。独立 workspace 使用 `herdr w
 
 ## 自动命名
 
-为当前协调者及本任务新建 agent 会话自动取名。按载体同步其显示名称：
+为当前协调者及本任务新建 agent 会话自动取名，并同步其显示名称：
 
 - 名称体现任务与角色，如 `auth-review`、`coordinator`；碰撞时加短后缀。Herdr agent 名遵守 `[a-z][a-z0-9_-]{0,31}`。
-- 当前应用支持会话改名时，将会话命名为对应 agent 名，并用该会话名作为消息中的 agent 名。
-- 在 Herdr 中，同步命名 agent 和所在 pane。读取所在 tab 的 pane 数量：只有一个 pane 时，tab 也使用同名；有多个 pane 时保留 tab 名，避免代表其中一个 agent。
+- 同步命名 agent 和所在 pane。读取所在 tab 的 pane 数量：只有一个 pane 时，tab 也使用同名；有多个 pane 时保留 tab 名，避免代表其中一个 agent。
 - 有 MR 时，会话显示标题以真实编号开头，如 `!123 auth 验证`；工具对 agent 路由名有字符限制时保留合法路由别名，并记录它与显示名称的对应关系。
 - 只用工具支持的改名能力并回读。没有能力就说明逻辑名称，不声称 UI 已改名。
 - 当前会话中记住名称与真实 agent/pane ID 的对应关系即可；发送不依赖 UI focus。agent 重启或 pane 移动后刷新目标。
@@ -61,11 +60,11 @@ Herdr 会话按上述任务关系选择位置。独立 workspace 使用 `herdr w
 
 **所有 agent 间消息首行使用 `[Prompt by <env> <provider> agent] <发送者> → <接收者>`**，可附加 `· 任务/话题`。这适用于派活、提问、澄清、进度、阻塞、最终交付，以及等待模式中供协调者读取的回复。
 
-`env` 是本次消息使用的通信环境，如 Herdr、App、CLI 或 AgentServer，而非进程所在的终端或操作系统；按实际通信通道填写，无法确认时省略，例如 `[Prompt by Codex agent] auth-review → coordinator`。`provider` 是发送方的 agent 产品，如 Codex、Claude、Gemini。通常在同一环境内通信，接收者使用该环境的可用工具向 from 指定的 agent 回复；回复头填写自身来源，交换实际发送者与接收者。名字无法定位时再补充真实会话 ID。
+`env` 固定为 Herdr；`provider` 是发送方的 agent 产品，如 Codex、Claude、Gemini。用 `herdr agent prompt` 向原发送者回复，填写自身来源并交换实际发送者与接收者。名字无法定位时用已核验的 pane ID。
 
 首次派活时明确要求所有回复沿用此消息头，包括中途提问和进度，并给出填好实际名称的示例；provider 和通信环境按回复方实际情况填写，不假定接收者已加载本 skill。正文自然表达，话题可省略；不要求额外接单确认。
 
-内部路由 ID 交给工具使用，不必反复展示。跨载体转发保留原消息的 from/to，并说明转发者。若收到缺少首行的回复且来源可确认，在下次沟通时提醒后续补上即可，不要求重做任务或重发整段结果；来源不明则先确认发送者。
+内部路由 ID 交给工具使用，不必反复展示。若收到缺少首行的回复且来源可确认，在下次沟通时提醒后续补上即可，不要求重做任务或重发整段结果；来源不明则先确认发送者。
 
 中途沟通示例：
 
@@ -89,7 +88,7 @@ Herdr 会话按上述任务关系选择位置。独立 workspace 使用 `herdr w
 >
 > 请只读检查指定 diff，给出问题、文件位置和依据。完成后直接在本会话输出结果，我会等待并读取。本任务中所有面向我的消息，包括中途提问和进度回复，首行写 `[Prompt by Herdr Codex agent] auth-review → coordinator`（来源按你的实际情况填写）。
 
-Herdr 用 `agent prompt --wait`，或发送后 `agent wait`，结束后用 `agent read` 读取结果；无需再让执行者主动发回消息。应用内 agent 会话使用其工具提供的等待、读取和结果通知机制。
+Herdr 用 `agent prompt --wait`，或发送后 `agent wait`，结束后用 `agent read` 读取结果；无需再让执行者主动发回消息。
 
 `wait` 表示到达 idle/done/blocked 等状态，不等于业务完成。读取输出后核对是否回答了本次任务；向正在工作的 agent 补发消息时，尤其避免把上一轮结束当成本次完成。
 
@@ -101,9 +100,9 @@ Herdr 用 `agent prompt --wait`，或发送后 `agent wait`，结束后用 `agen
 >
 > 请只读检查指定 diff，给出问题、文件位置和依据。完成或受阻后，主动向 agent `coordinator` 汇报。本任务中所有面向我的消息，包括中途提问和进度回复，首行写 `[Prompt by Herdr Codex agent] auth-review → coordinator`（来源按你的实际情况填写）。
 
-发送前确定并核验可回报的协调者名称/路由，在消息中写清。应用内会话使用其跨任务消息工具直接回复指定会话。Herdr 使用不带 `--wait` 的 `agent prompt` 发送后继续其他工作；执行者完成或受阻后，通过 `agent prompt` 向指定目标发送结果，不带 `--wait`，不等待对方回执，避免双方互等。只有现有用户协作授权涵盖该回报时才使用此方式。
+发送前确定并核验可回报的协调者名称/路由，在消息中写清。使用不带 `--wait` 的 `agent prompt` 发送后继续其他工作；执行者完成或受阻后，通过 `agent prompt` 向指定目标发送结果，不带 `--wait`，不等待对方回执，避免双方互等。只有现有用户协作授权涵盖该回报时才使用此方式。
 
-跨载体无法直接回报时，由可用的协调桥接者转发；没有回报通道就改用等待/稍后读取，并明确告知，不能只约定一个无法实现的回调。
+没有可核验的回报路由就改用等待或稍后读取，并明确告知。
 
 结果沿用同一可读格式：
 
@@ -117,7 +116,7 @@ Herdr 用 `agent prompt --wait`，或发送后 `agent wait`，结束后用 `agen
 
 ## 跟进与交付
 
-- 超时、未收到汇报或发送状态不明时，先检查 agent 状态和输出；不盲目重发或换载体双投。重复任务返回已有结果或当前进度。
+- 超时、未收到汇报或发送状态不明时，先检查 agent 状态和输出；不盲目重发或改用其他终端重复投递。重复任务返回已有结果或当前进度。
 - 改动要求直接说明变化。重派或取消后，先确认原执行者已停稳并核对已完成内容，避免重复执行或冲突写入。
 - 协调者读取或收到结果后，核对本次任务、产物及验证证据，再向用户汇总；发送成功、wait 结束都不单独证明完成。
 - 交付写在现有会话中即可：结果、产物路径、验证及遗留问题。确需跨会话恢复或长期跟进时，按需保存简短检查点，不逐条持久化消息。
